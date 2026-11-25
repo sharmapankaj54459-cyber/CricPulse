@@ -1,0 +1,6 @@
+{
+  "name": "CricPulse",
+  "description": "Broadcast-grade cricket scoring, real-time live match sync, player stats, village tournament hub, and multi-sport scoreboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

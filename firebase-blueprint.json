@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "LiveMatch": {
+      "title": "LiveMatch",
+      "description": "Real-time cricket match state with innings cards, commentary, and spectator watch code.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "description": "Firebase Auth UID of the scorer who owns this match" },
+        "matchCode": { "type": "string", "description": "Unique shareable match code matching the document ID" },
+        "hostTeam": { "type": "string", "description": "Host team name" },
+        "visitorTeam": { "type": "string", "description": "Visitor team name" },
+        "oversLimit": { "type": "integer", "description": "Maximum overs per innings" },
+        "playersPerTeam": { "type": "integer", "description": "Players per side (2-15)" },
+        "tossWinner": { "type": "string", "description": "Team that won the toss" },
+        "tossDecision": { "type": "string", "enum": ["BAT", "BOWL"] },
+        "wideRuns": { "type": "integer", "description": "Penalty runs for a wide ball" },
+        "noBallRuns": { "type": "integer", "description": "Penalty runs for a no ball" },
+        "reballWide": { "type": "boolean", "description": "Whether wide deliveries require a re-ball" },
+        "reballNoBall": { "type": "boolean", "description": "Whether no-ball deliveries require a re-ball" },
+        "lastManBatting": { "type": "boolean", "description": "Whether last remaining batter can bat solo" },
+        "publicWatch": { "type": "boolean", "description": "Whether spectators with matchCode can watch live" },
+        "status": { "type": "string", "enum": ["LIVE", "INNINGS_BREAK", "COMPLETED"] },
+        "resultSummary": { "type": "string", "description": "Match result or chase equation banner" },
+        "manOfTheMatch": { "type": "string", "description": "Awarded Man of the Match player name" },
+        "currentInnings": { "type": "integer", "description": "1 or 2" },
+        "battingTeam": { "type": "string", "description": "Currently batting team name" },
+        "bowlingTeam": { "type": "string", "description": "Currently bowling team name" },
+        "totalRuns": { "type": "integer", "description": "Current innings total runs" },
+        "wickets": { "type": "integer", "description": "Current innings wickets fallen" },
+        "legalBalls": { "type": "integer", "description": "Current innings legal balls bowled" },
+        "target": { "type": "integer", "description": "Target runs in 2nd innings (0 in 1st innings)" },
+        "strikerName": { "type": "string", "description": "Current striker batter name" },
+        "nonStrikerName": { "type": "string", "description": "Current non-striker batter name" },
+        "bowlerName": { "type": "string", "description": "Current bowler name" },
+        "partnershipRuns": { "type": "integer", "description": "Current wicket partnership runs" },
+        "partnershipBalls": { "type": "integer", "description": "Current wicket partnership balls" },
+        "recentBalls": { "type": "array", "description": "Recent ball outcome badges (up to 24)" },
+        "commentary": { "type": "array", "description": "Recent live broadcast commentary lines (up to 40)" },
+        "innings1": { "type": "object", "description": "Native map holding 1st innings batting, bowling, extras, FOW, and per-over stats" },
+        "innings2": { "type": "object", "description": "Native map holding 2nd innings batting, bowling, extras, FOW, and per-over stats" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "ownerId", "matchCode", "hostTeam", "visitorTeam", "oversLimit", "playersPerTeam",
+        "tossWinner", "tossDecision", "wideRuns", "noBallRuns", "reballWide", "reballNoBall",
+        "lastManBatting", "publicWatch", "status", "resultSummary", "manOfTheMatch",
+        "currentInnings", "battingTeam", "bowlingTeam", "totalRuns", "wickets", "legalBalls",
+        "target", "strikerName", "nonStrikerName", "bowlerName", "partnershipRuns",
+        "partnershipBalls", "recentBalls", "commentary", "innings1", "innings2",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "PlayerProfile": {
+      "title": "PlayerProfile",
+      "description": "Career batting, bowling, and fielding statistics for a registered player.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Player full name" },
+        "role": { "type": "string", "enum": ["BATSMAN", "BOWLER", "ALL_ROUNDER", "WICKET_KEEPER"] },
+        "teamName": { "type": "string", "description": "Home village or club team" },
+        "localPhotoPath": { "type": "string", "description": "App-local file path for picked avatar photo" },
+        "matches": { "type": "integer" },
+        "innings": { "type": "integer" },
+        "runs": { "type": "integer" },
+        "ballsFaced": { "type": "integer" },
+        "highestScore": { "type": "integer" },
+        "thirties": { "type": "integer" },
+        "fifties": { "type": "integer" },
+        "hundreds": { "type": "integer" },
+        "fours": { "type": "integer" },
+        "sixes": { "type": "integer" },
+        "notOuts": { "type": "integer" },
+        "wickets": { "type": "integer" },
+        "ballsBowled": { "type": "integer" },
+        "runsConceded": { "type": "integer" },
+        "bestBowlingWickets": { "type": "integer" },
+        "bestBowlingRuns": { "type": "integer" },
+        "catches": { "type": "integer" },
+        "runOuts": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "name", "role", "teamName", "matches", "innings", "runs", "ballsFaced",
+        "highestScore", "thirties", "fifties", "hundreds", "fours", "sixes", "notOuts",
+        "wickets", "ballsBowled", "runsConceded", "bestBowlingWickets", "bestBowlingRuns",
+        "catches", "runOuts", "createdAt", "updatedAt"
+      ]
+    },
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Village cricket tournament with format, standings teams list, NRR fields, and match results.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Tournament title" },
+        "location": { "type": "string", "description": "Village or ground location" },
+        "format": { "type": "string", "enum": ["LEAGUE", "KNOCKOUT", "GROUPS"] },
+        "oversPerMatch": { "type": "integer" },
+        "pointsPerWin": { "type": "integer" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED"] },
+        "championTeam": { "type": "string" },
+        "manOfTheSeries": { "type": "string" },
+        "teams": { "type": "array", "description": "Bounded list of team standing maps (up to 32)" },
+        "results": { "type": "array", "description": "Bounded list of recorded fixture results (up to 100)" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "name", "location", "format", "oversPerMatch", "pointsPerWin", "status",
+        "championTeam", "manOfTheSeries", "teams", "results", "createdAt", "updatedAt"
+      ]
+    },
+    "SportMatch": {
+      "title": "SportMatch",
+      "description": "Saved multi-sport village match result (Kabaddi, Football, Volleyball, Badminton, Kho-Kho, Basketball).",
+      "type": "object",
+      "properties": {
+        "sport": { "type": "string", "enum": ["KABADDI", "FOOTBALL", "VOLLEYBALL", "BADMINTON", "KHO_KHO", "BASKETBALL"] },
+        "teamA": { "type": "string" },
+        "teamB": { "type": "string" },
+        "scoreA": { "type": "integer" },
+        "scoreB": { "type": "integer" },
+        "periodLabel": { "type": "string" },
+        "summary": { "type": "string" },
+        "winner": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp set via FieldValue.serverTimestamp()" }
+      },
+      "required": [
+        "sport", "teamA", "teamB", "scoreA", "scoreB", "periodLabel",
+        "summary", "winner", "createdAt", "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/live_matches/{matchCode}": {
+      "schema": { "$ref": "#/entities/LiveMatch" },
+      "description": "Live and historical cricket matches synced in real time by unique Match ID for scorers and spectators."
+    },
+    "/users/{userId}/players/{playerId}": {
+      "schema": { "$ref": "#/entities/PlayerProfile" },
+      "description": "Per-user player career statistics and profiles."
+    },
+    "/users/{userId}/tournaments/{tournamentId}": {
+      "schema": { "$ref": "#/entities/Tournament" },
+      "description": "Per-user village tournaments with points tables, NRR, and match results."
+    },
+    "/users/{userId}/sport_matches/{matchId}": {
+      "schema": { "$ref": "#/entities/SportMatch" },
+      "description": "Per-user multi-sport village scoreboard history."
+    }
+  }
+}

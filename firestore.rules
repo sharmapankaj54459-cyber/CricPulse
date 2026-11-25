@@ -1,0 +1,317 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- LIVE MATCH VALIDATION BLUEPRINT ---
+    function isValidInningsMap(inn) {
+      return inn is map &&
+        inn.battingTeam is string && inn.battingTeam.size() <= 50 &&
+        inn.runs is int && inn.runs >= 0 && inn.runs <= 2000 &&
+        inn.wickets is int && inn.wickets >= 0 && inn.wickets <= 15 &&
+        inn.legalBalls is int && inn.legalBalls >= 0 && inn.legalBalls <= 600 &&
+        inn.extrasWide is int && inn.extrasWide >= 0 && inn.extrasWide <= 500 &&
+        inn.extrasNoBall is int && inn.extrasNoBall >= 0 && inn.extrasNoBall <= 500 &&
+        inn.extrasBye is int && inn.extrasBye >= 0 && inn.extrasBye <= 500 &&
+        inn.extrasLegBye is int && inn.extrasLegBye >= 0 && inn.extrasLegBye <= 500 &&
+        inn.overRuns is list && inn.overRuns.size() <= 100 &&
+        (inn.overRuns.size() == 0 || inn.overRuns[0] is int) &&
+        inn.overWickets is list && inn.overWickets.size() <= 100 &&
+        (inn.overWickets.size() == 0 || inn.overWickets[0] is int) &&
+        inn.batters is list && inn.batters.size() <= 20 &&
+        (inn.batters.size() == 0 || inn.batters[0] is map) &&
+        inn.bowlers is list && inn.bowlers.size() <= 20 &&
+        (inn.bowlers.size() == 0 || inn.bowlers[0] is map) &&
+        inn.fallOfWickets is list && inn.fallOfWickets.size() <= 15 &&
+        (inn.fallOfWickets.size() == 0 || inn.fallOfWickets[0] is map);
+    }
+
+    function isValidLiveMatch(data) {
+      return data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+        data.ownerId == request.auth.uid &&
+        data.matchCode is string && data.matchCode.size() >= 4 && data.matchCode.size() <= 16 &&
+        data.matchCode.matches('^[A-Z0-9_\\-]+$') &&
+        data.hostTeam is string && data.hostTeam.size() >= 1 && data.hostTeam.size() <= 50 &&
+        data.visitorTeam is string && data.visitorTeam.size() >= 1 && data.visitorTeam.size() <= 50 &&
+        data.oversLimit is int && data.oversLimit >= 1 && data.oversLimit <= 100 &&
+        data.playersPerTeam is int && data.playersPerTeam >= 2 && data.playersPerTeam <= 15 &&
+        data.tossWinner is string && data.tossWinner.size() >= 1 && data.tossWinner.size() <= 50 &&
+        data.tossDecision in ['BAT', 'BOWL'] &&
+        data.wideRuns is int && data.wideRuns >= 0 && data.wideRuns <= 6 &&
+        data.noBallRuns is int && data.noBallRuns >= 0 && data.noBallRuns <= 6 &&
+        data.reballWide is bool &&
+        data.reballNoBall is bool &&
+        data.lastManBatting is bool &&
+        data.publicWatch is bool &&
+        data.status in ['LIVE', 'INNINGS_BREAK', 'COMPLETED'] &&
+        data.resultSummary is string && data.resultSummary.size() <= 160 &&
+        data.manOfTheMatch is string && data.manOfTheMatch.size() <= 60 &&
+        data.currentInnings is int && data.currentInnings >= 1 && data.currentInnings <= 2 &&
+        data.battingTeam is string && data.battingTeam.size() >= 1 && data.battingTeam.size() <= 50 &&
+        data.bowlingTeam is string && data.bowlingTeam.size() >= 1 && data.bowlingTeam.size() <= 50 &&
+        data.totalRuns is int && data.totalRuns >= 0 && data.totalRuns <= 2000 &&
+        data.wickets is int && data.wickets >= 0 && data.wickets <= 15 &&
+        data.legalBalls is int && data.legalBalls >= 0 && data.legalBalls <= 600 &&
+        data.target is int && data.target >= 0 && data.target <= 2001 &&
+        data.strikerName is string && data.strikerName.size() <= 60 &&
+        data.nonStrikerName is string && data.nonStrikerName.size() <= 60 &&
+        data.bowlerName is string && data.bowlerName.size() <= 60 &&
+        data.partnershipRuns is int && data.partnershipRuns >= 0 && data.partnershipRuns <= 2000 &&
+        data.partnershipBalls is int && data.partnershipBalls >= 0 && data.partnershipBalls <= 600 &&
+        data.recentBalls is list && data.recentBalls.size() <= 24 &&
+        (data.recentBalls.size() == 0 || data.recentBalls[0] is string) &&
+        data.commentary is list && data.commentary.size() <= 40 &&
+        (data.commentary.size() == 0 || data.commentary[0] is string) &&
+        isValidInningsMap(data.innings1) &&
+        isValidInningsMap(data.innings2) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- PLAYER PROFILE VALIDATION BLUEPRINT ---
+    function isValidPlayer(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+        data.role in ['BATSMAN', 'BOWLER', 'ALL_ROUNDER', 'WICKET_KEEPER'] &&
+        data.teamName is string && data.teamName.size() <= 50 &&
+        (!('localPhotoPath' in data) || data.localPhotoPath == null || (data.localPhotoPath is string && data.localPhotoPath.size() <= 260)) &&
+        data.matches is int && data.matches >= 0 && data.matches <= 5000 &&
+        data.innings is int && data.innings >= 0 && data.innings <= 5000 &&
+        data.runs is int && data.runs >= 0 && data.runs <= 200000 &&
+        data.ballsFaced is int && data.ballsFaced >= 0 && data.ballsFaced <= 500000 &&
+        data.highestScore is int && data.highestScore >= 0 && data.highestScore <= 1000 &&
+        data.thirties is int && data.thirties >= 0 && data.thirties <= 2000 &&
+        data.fifties is int && data.fifties >= 0 && data.fifties <= 2000 &&
+        data.hundreds is int && data.hundreds >= 0 && data.hundreds <= 1000 &&
+        data.fours is int && data.fours >= 0 && data.fours <= 50000 &&
+        data.sixes is int && data.sixes >= 0 && data.sixes <= 50000 &&
+        data.notOuts is int && data.notOuts >= 0 && data.notOuts <= 5000 &&
+        data.wickets is int && data.wickets >= 0 && data.wickets <= 20000 &&
+        data.ballsBowled is int && data.ballsBowled >= 0 && data.ballsBowled <= 500000 &&
+        data.runsConceded is int && data.runsConceded >= 0 && data.runsConceded <= 500000 &&
+        data.bestBowlingWickets is int && data.bestBowlingWickets >= 0 && data.bestBowlingWickets <= 15 &&
+        data.bestBowlingRuns is int && data.bestBowlingRuns >= 0 && data.bestBowlingRuns <= 500 &&
+        data.catches is int && data.catches >= 0 && data.catches <= 5000 &&
+        data.runOuts is int && data.runOuts >= 0 && data.runOuts <= 5000 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- TOURNAMENT VALIDATION BLUEPRINT ---
+    function isValidTournament(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.location is string && data.location.size() <= 80 &&
+        data.format in ['LEAGUE', 'KNOCKOUT', 'GROUPS'] &&
+        data.oversPerMatch is int && data.oversPerMatch >= 1 && data.oversPerMatch <= 50 &&
+        data.pointsPerWin is int && data.pointsPerWin >= 1 && data.pointsPerWin <= 10 &&
+        data.status in ['ACTIVE', 'COMPLETED'] &&
+        data.championTeam is string && data.championTeam.size() <= 60 &&
+        data.manOfTheSeries is string && data.manOfTheSeries.size() <= 60 &&
+        data.teams is list && data.teams.size() <= 32 &&
+        (data.teams.size() == 0 || data.teams[0] is map) &&
+        data.results is list && data.results.size() <= 100 &&
+        (data.results.size() == 0 || data.results[0] is map) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- MULTI-SPORT MATCH VALIDATION BLUEPRINT ---
+    function isValidSportMatch(data) {
+      return data.sport in ['KABADDI', 'FOOTBALL', 'VOLLEYBALL', 'BADMINTON', 'KHO_KHO', 'BASKETBALL'] &&
+        data.teamA is string && data.teamA.size() >= 1 && data.teamA.size() <= 50 &&
+        data.teamB is string && data.teamB.size() >= 1 && data.teamB.size() <= 50 &&
+        data.scoreA is int && data.scoreA >= 0 && data.scoreA <= 1000 &&
+        data.scoreB is int && data.scoreB >= 0 && data.scoreB <= 1000 &&
+        data.periodLabel is string && data.periodLabel.size() <= 40 &&
+        data.summary is string && data.summary.size() <= 160 &&
+        data.winner is string && data.winner.size() <= 60 &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    // --- COLLECTION 1: LIVE CRICKET MATCHES (Real-time Unique Match ID Watch & Scorer Ownership) ---
+    match /live_matches/{matchCode} {
+      // Spectators who know the exact Unique Match ID can read public live matches; owner can always read
+      allow get: if isSignedIn() && isValidId(matchCode) &&
+        (existing().ownerId == request.auth.uid || existing().publicWatch == true);
+
+      // List queries strictly scoped to owner's own matches (client MUST filter whereEqualTo("ownerId", uid))
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn() && isValidId(matchCode) &&
+        incoming().matchCode == matchCode &&
+        incoming().keys().hasAll([
+          'ownerId', 'matchCode', 'hostTeam', 'visitorTeam', 'oversLimit', 'playersPerTeam',
+          'tossWinner', 'tossDecision', 'wideRuns', 'noBallRuns', 'reballWide', 'reballNoBall',
+          'lastManBatting', 'publicWatch', 'status', 'resultSummary', 'manOfTheMatch',
+          'currentInnings', 'battingTeam', 'bowlingTeam', 'totalRuns', 'wickets', 'legalBalls',
+          'target', 'strikerName', 'nonStrikerName', 'bowlerName', 'partnershipRuns',
+          'partnershipBalls', 'recentBalls', 'commentary', 'innings1', 'innings2',
+          'createdAt', 'updatedAt'
+        ]) &&
+        incoming().keys().hasOnly([
+          'ownerId', 'matchCode', 'hostTeam', 'visitorTeam', 'oversLimit', 'playersPerTeam',
+          'tossWinner', 'tossDecision', 'wideRuns', 'noBallRuns', 'reballWide', 'reballNoBall',
+          'lastManBatting', 'publicWatch', 'status', 'resultSummary', 'manOfTheMatch',
+          'currentInnings', 'battingTeam', 'bowlingTeam', 'totalRuns', 'wickets', 'legalBalls',
+          'target', 'strikerName', 'nonStrikerName', 'bowlerName', 'partnershipRuns',
+          'partnershipBalls', 'recentBalls', 'commentary', 'innings1', 'innings2',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidLiveMatch(incoming());
+
+      // Action-based update with Terminal State Locking once status == 'COMPLETED'
+      allow update: if isSignedIn() && isValidId(matchCode) &&
+        isValidLiveMatch(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        existing().status != 'COMPLETED' &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().matchCode == existing().matchCode &&
+        incoming().createdAt == existing().createdAt && (
+          // Action 1: Live ball-by-ball scoring & innings state sync
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'resultSummary', 'manOfTheMatch', 'currentInnings',
+            'battingTeam', 'bowlingTeam', 'totalRuns', 'wickets', 'legalBalls',
+            'target', 'strikerName', 'nonStrikerName', 'bowlerName',
+            'partnershipRuns', 'partnershipBalls', 'recentBalls', 'commentary',
+            'innings1', 'innings2', 'publicWatch', 'updatedAt'
+          ]) ||
+          // Action 2: Toggle public spectator visibility
+          incoming().diff(existing()).affectedKeys().hasOnly(['publicWatch', 'updatedAt'])
+        );
+
+      allow delete: if isSignedIn() && isValidId(matchCode) &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // --- COLLECTION 2: USER-SCOPED SUBCOLLECTIONS ---
+    match /users/{userId} {
+      // Players Career Profiles
+      match /players/{playerId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(playerId);
+
+        allow create: if isOwner(userId) && isValidId(playerId) &&
+          incoming().keys().hasAll([
+            'name', 'role', 'teamName', 'matches', 'innings', 'runs', 'ballsFaced',
+            'highestScore', 'thirties', 'fifties', 'hundreds', 'fours', 'sixes', 'notOuts',
+            'wickets', 'ballsBowled', 'runsConceded', 'bestBowlingWickets', 'bestBowlingRuns',
+            'catches', 'runOuts', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'name', 'role', 'teamName', 'localPhotoPath', 'matches', 'innings', 'runs',
+            'ballsFaced', 'highestScore', 'thirties', 'fifties', 'hundreds', 'fours', 'sixes',
+            'notOuts', 'wickets', 'ballsBowled', 'runsConceded', 'bestBowlingWickets',
+            'bestBowlingRuns', 'catches', 'runOuts', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidPlayer(incoming());
+
+        allow update: if isOwner(userId) && isValidId(playerId) &&
+          isValidPlayer(incoming()) &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Edit profile metadata or photo
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'role', 'teamName', 'localPhotoPath', 'updatedAt'
+            ]) ||
+            // Action 2: Sync career stats from match or manual update
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'role', 'teamName', 'localPhotoPath', 'matches', 'innings', 'runs',
+              'ballsFaced', 'highestScore', 'thirties', 'fifties', 'hundreds', 'fours', 'sixes',
+              'notOuts', 'wickets', 'ballsBowled', 'runsConceded', 'bestBowlingWickets',
+              'bestBowlingRuns', 'catches', 'runOuts', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(playerId);
+      }
+
+      // Village Tournaments Hub
+      match /tournaments/{tournamentId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(tournamentId);
+
+        allow create: if isOwner(userId) && isValidId(tournamentId) &&
+          incoming().keys().hasAll([
+            'name', 'location', 'format', 'oversPerMatch', 'pointsPerWin', 'status',
+            'championTeam', 'manOfTheSeries', 'teams', 'results', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'name', 'location', 'format', 'oversPerMatch', 'pointsPerWin', 'status',
+            'championTeam', 'manOfTheSeries', 'teams', 'results', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidTournament(incoming());
+
+        // Action-based update with Terminal State Locking when status == 'COMPLETED'
+        allow update: if isOwner(userId) && isValidId(tournamentId) &&
+          isValidTournament(incoming()) &&
+          existing().status != 'COMPLETED' &&
+          incoming().createdAt == existing().createdAt && (
+            // Action 1: Add/update teams or record match results & standings
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'teams', 'results', 'manOfTheSeries', 'updatedAt'
+            ]) ||
+            // Action 2: Complete tournament and crown champion
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'championTeam', 'manOfTheSeries', 'teams', 'results', 'updatedAt'
+            ])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(tournamentId);
+      }
+
+      // Multi-Sport Village Scoreboard Matches
+      match /sport_matches/{matchId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(matchId);
+
+        allow create: if isOwner(userId) && isValidId(matchId) &&
+          incoming().keys().hasAll([
+            'sport', 'teamA', 'teamB', 'scoreA', 'scoreB', 'periodLabel',
+            'summary', 'winner', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'sport', 'teamA', 'teamB', 'scoreA', 'scoreB', 'periodLabel',
+            'summary', 'winner', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidSportMatch(incoming());
+
+        allow update: if isOwner(userId) && isValidId(matchId) &&
+          isValidSportMatch(incoming()) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'scoreA', 'scoreB', 'periodLabel', 'summary', 'winner', 'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(matchId);
+      }
+    }
+  }
+}
